@@ -1,4 +1,4 @@
-(ns ragtime.jdbc
+(ns ragtime.next-jdbc
   "Functions for loading SQL migrations and applying them to a SQL database."
   (:refer-clojure :exclude [load-file])
   (:require [clojure.edn :as edn]

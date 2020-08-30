@@ -1,6 +1,6 @@
-(ns ragtime.jdbc-test
+(ns ragtime.next-jdbc-test
   (:require [clojure.test :refer :all]
-            [ragtime.jdbc :as jdbc]
+            [ragtime.next-jdbc :as next-jdbc]
             [ragtime.core :as core]
             [ragtime.protocols :as p]
             [clojure.java.io :as io]

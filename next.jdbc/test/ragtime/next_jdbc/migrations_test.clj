@@ -1,7 +1,7 @@
-(ns ragtime.jdbc.migrations-test
+(ns ragtime.next-jdbc.migrations-test
   (:require [clojure.test :refer :all]
-            [ragtime.jdbc :as jdbc]
-            [ragtime.jdbc.migrations :refer :all]))
+            [ragtime.next-jdbc :as jdbc]
+            [ragtime.next-jdbc.migrations :refer :all]))
 
 (deftest create-table-test
   (is (= (create-table ::foo :foo [[:id "int"] [:name "varchar(255)"]])
