@@ -3,19 +3,17 @@
   (:refer-clojure :exclude [load-file])
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.java.jdbc :as sql]
+            [next.jdbc.sql :as sql]
             [clojure.string :as str]
             [ragtime.protocols :as p]
             [resauce.core :as resauce])
-  (:import [java.io File] 
+  (:import [java.io File]
            [java.sql Connection]
            [java.text SimpleDateFormat]
            [java.util Date]))
 
 (defn- migrations-table-ddl [table-name]
-  (sql/create-table-ddl table-name
-                        [[:id "varchar(255)"]
-                         [:created_at "varchar(32)"]]))
+ (str "create table " table-name " (id varchar(255), created_at varchar(32))"))
 
 (defn- get-table-metadata* [^Connection conn]
   (-> conn

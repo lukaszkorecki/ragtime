@@ -1,4 +1,4 @@
-(defproject ragtime/jdbc "0.8.0"
+(defproject ragtime/next.jdbc "0.8.0"
   :description "Ragtime migrations for JDBC via next.jdbc"
   :url "https://github.com/weavejester/ragtime"
   :scm {:dir ".."}
