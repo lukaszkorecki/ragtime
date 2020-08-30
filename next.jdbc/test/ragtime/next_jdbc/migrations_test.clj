@@ -3,6 +3,8 @@
             [ragtime.next-jdbc :as jdbc]
             [ragtime.next-jdbc.migrations :refer :all]))
 
+
+
 (deftest create-table-test
   (is (= (create-table ::foo :foo [[:id "int"] [:name "varchar(255)"]])
          (jdbc/sql-migration
