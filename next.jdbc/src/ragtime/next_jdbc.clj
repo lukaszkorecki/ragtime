@@ -4,6 +4,8 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [next.jdbc.sql :as sql]
+            [next.jdbc :as jdbc]
+
             [clojure.string :as str]
             [ragtime.protocols :as p]
             [resauce.core :as resauce])
@@ -19,12 +21,12 @@
   (-> conn
       (.getMetaData)
       (.getTables (.getCatalog conn) nil "%" nil)
-      (sql/metadata-result)))
+      #_ (sql/metadata-result)))
 
 (defn- get-table-metadata [db-spec]
-  (if-let [conn (sql/db-find-connection db-spec)]
+  (if-let [conn (jdbc/get-datasource db-spec)]
     (get-table-metadata* conn)
-    (with-open [conn (sql/get-connection db-spec)]
+    (with-open [conn (jdbc/get-connection db-spec)]
       (get-table-metadata* conn))))
 
 (defn- metadata-matches-table? [^String table-name metadata]
@@ -39,7 +41,7 @@
 
 (defn- ensure-migrations-table-exists [db-spec migrations-table]
   (when-not (table-exists? db-spec migrations-table)
-    (sql/execute! db-spec [(migrations-table-ddl migrations-table)])))
+    (jdbc/execute! db-spec [(migrations-table-ddl migrations-table)])))
 
 (defn- format-datetime [^Date dt]
   (-> (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS")
@@ -76,7 +78,7 @@
 
 (defn- execute-sql! [db-spec statements transaction?]
   (doseq [s statements]
-    (sql/execute! db-spec [s] {:transaction? transaction?})))
+    (jdbc/execute! db-spec [s] {:transaction? transaction?})))
 
 (defrecord SqlMigration [id up down transactions]
   p/Migration

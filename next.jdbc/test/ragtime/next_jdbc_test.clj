@@ -4,16 +4,17 @@
             [ragtime.core :as core]
             [ragtime.protocols :as p]
             [clojure.java.io :as io]
-            [clojure.java.jdbc :as sql]))
+            [next.jdbc :as jdbc]
+            [next.jdbc.sql :as sql]))
 
 (def db-spec "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1")
 
 (use-fixtures :each (fn reset-db [f]
-                      (sql/execute! db-spec "DROP ALL OBJECTS")
+                      (jdbc/execute! db-spec "DROP ALL OBJECTS")
                       (f)))
 
 (deftest test-add-migrations
-  (let [db (jdbc/sql-database db-spec)]
+  (let [db (next-jdbc/sql-database db-spec)]
     (p/add-migration-id db "12")
     (p/add-migration-id db "13")
     (p/add-migration-id db "20")
@@ -22,14 +23,14 @@
     (is (= ["12" "20"] (p/applied-migration-ids db)))))
 
 (deftest test-migrations-table
-  (let [db (jdbc/sql-database db-spec
+  (let [db (next-jdbc/sql-database db-spec
                               {:migrations-table "migrations"})]
     (p/add-migration-id db "12")
     (is (= ["12"]
            (sql/query (:db-spec db) ["SELECT * FROM migrations"] {:row-fn :id}))))
 
-  (sql/execute! db-spec "CREATE SCHEMA myschema")
-  (let [db (jdbc/sql-database db-spec
+  (jdbc/execute! db-spec "CREATE SCHEMA myschema")
+  (let [db (next-jdbc/sql-database db-spec
                               {:migrations-table "myschema.migrations"})]
     (p/add-migration-id db "20")
     (p/add-migration-id db "21")
@@ -40,8 +41,8 @@
   (set (sql/query (:db-spec db) ["SHOW TABLES"] {:row-fn :table_name})))
 
 (defn test-sql-migration [db-spec migration-extras]
-  (let [db (jdbc/sql-database db-spec)
-        m  (jdbc/sql-migration
+  (let [db (next-jdbc/sql-database db-spec)
+        m  (next-jdbc/sql-migration
             (merge {:id   "01"
                     :up   ["CREATE TABLE foo (id int)"]
                     :down ["DROP TABLE foo"]}
@@ -68,13 +69,12 @@
   (test-sql-migration db-spec { :transactions true }))
 
 (deftest test-sql-migration-using-db-spec-with-existing-connection
-  (sql/with-db-connection
-    [conn db-spec]
+  (with-open [conn (jdbc/get-connection db-spec)]
     (test-sql-migration conn {})))
 
 (deftest test-load-directory
-  (let [db  (jdbc/sql-database db-spec)
-        ms  (jdbc/load-directory "test/migrations")
+  (let [db  (next-jdbc/sql-database db-spec)
+        ms  (next-jdbc/load-directory "test/migrations")
         idx (core/into-index ms)]
     (core/migrate-all db idx ms)
     (is (= #{"RAGTIME_MIGRATIONS" "FOO" "BAR" "BAZ" "QUZA" "QUZB" "QUXA" "QUXB" "LAST_TABLE"}
@@ -86,8 +86,8 @@
     (is (empty? (p/applied-migration-ids db)))))
 
 (deftest test-load-resources
-  (let [db  (jdbc/sql-database db-spec)
-        ms  (jdbc/load-resources "migrations")
+  (let [db  (next-jdbc/sql-database db-spec)
+        ms  (next-jdbc/load-resources "migrations")
         idx (core/into-index ms)]
     (core/migrate-all db idx ms)
     (is (= #{"RAGTIME_MIGRATIONS" "FOO" "BAR" "BAZ" "QUZA" "QUZB" "QUXA" "QUXB" "LAST_TABLE"}
@@ -103,6 +103,6 @@
         files (mapcat (fn [id] [(str id ".up.sql") (str id ".down.sql")]) ids)]
     (with-redefs [file-seq (constantly (map io/file (shuffle files)))
                   slurp    (constantly "SELECT 1;")]
-      (let [migrations (jdbc/load-directory "foo")]
+      (let [migrations (next-jdbc/load-directory "foo")]
         (is (= (count migrations) 10000))
         (is (= (map :id migrations) ids))))))

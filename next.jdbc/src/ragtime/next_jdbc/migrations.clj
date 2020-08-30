@@ -1,6 +1,6 @@
 (ns ragtime.next-jdbc.migrations
   (:require ; [clojure.java.jdbc :as jdbc]
-            [ragtime.jdbc :as ragtime]))
+            [ragtime.next-jdbc :as ragtime]))
 
 (defn create-table [id table specs]
   (ragtime/sql-migration
