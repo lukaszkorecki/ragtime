@@ -5,7 +5,7 @@
             [clojure.java.io :as io]
             [next.jdbc.sql :as sql]
             [next.jdbc :as jdbc]
-
+            [next.jdbc.result-set :as rs]
             [clojure.string :as str]
             [ragtime.protocols :as p]
             [resauce.core :as resauce])
@@ -14,34 +14,34 @@
            [java.text SimpleDateFormat]
            [java.util Date]))
 
-(defn- migrations-table-ddl [table-name]
+(defn migrations-table-ddl [table-name]
  (str "create table " table-name " (id varchar(255), created_at varchar(32))"))
 
 (defn- get-table-metadata* [^Connection conn]
   (-> conn
       (.getMetaData)
       (.getTables (.getCatalog conn) nil "%" nil)
-      #_ (sql/metadata-result)))
+      (rs/datafiable-result-set conn {})))
 
-(defn- get-table-metadata [db-spec]
-  (if-let [conn (jdbc/get-datasource db-spec)]
-    (get-table-metadata* conn)
-    (with-open [conn (jdbc/get-connection db-spec)]
-      (get-table-metadata* conn))))
+(defn get-table-metadata [db-spec]
+  (with-open [conn (jdbc/get-connection db-spec)]
+    (get-table-metadata* conn)))
 
-(defn- metadata-matches-table? [^String table-name metadata]
-  (.equalsIgnoreCase table-name
-                     (if (.contains table-name ".")
-                       (str (:table_schem metadata) "." (:table_name metadata))
-                       (:table_name metadata))))
+(defn metadata-matches-table? [^String table-name metadata]
+  (->> metadata
+       (some (fn [meta-table-name]
+               (.equalsIgnoreCase table-name
+                                  (if (.contains table-name ".")
+                                    (str (:TABLES/TABLE_SCHEM metadata) "." (:TABLES/TABLE_NAME metadata))
+                                    (:TABLES/TABLE_NAME metadata)))))))
 
-(defn- table-exists? [db-spec ^String table-name]
+(defn table-exists? [db-spec ^String table-name]
   (some (partial metadata-matches-table? table-name)
         (get-table-metadata db-spec)))
 
-(defn- ensure-migrations-table-exists [db-spec migrations-table]
+(defn ensure-migrations-table-exists [db-spec migrations-table]
   (when-not (table-exists? db-spec migrations-table)
-    (jdbc/execute! db-spec [(migrations-table-ddl migrations-table)])))
+    (jdbc/execute! (jdbc/get-connection db-spec) [(migrations-table-ddl migrations-table)])))
 
 (defn- format-datetime [^Date dt]
   (-> (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS")
@@ -61,9 +61,10 @@
 
   (applied-migration-ids [_]
     (ensure-migrations-table-exists db-spec migrations-table)
+    (map :RAGTIME_MIGRATIONS/ID
     (sql/query db-spec
                [(str "SELECT id FROM " migrations-table " ORDER BY created_at")]
-               {:row-fn :id})))
+               {:row-fn :id}))))
 
 (defn sql-database
   "Given a db-spec and a map of options, return a Migratable database.
@@ -77,8 +78,9 @@
    (->SqlDatabase db-spec (:migrations-table options "ragtime_migrations"))))
 
 (defn- execute-sql! [db-spec statements transaction?]
-  (doseq [s statements]
-    (jdbc/execute! db-spec [s] {:transaction? transaction?})))
+  (with-open [conn (jdbc/get-connection db-spec)]
+    (doseq [s statements]
+      (jdbc/execute! conn [s] {:transaction? transaction?}))))
 
 (defrecord SqlMigration [id up down transactions]
   p/Migration

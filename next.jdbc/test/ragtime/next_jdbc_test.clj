@@ -10,7 +10,7 @@
 (def db-spec "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1")
 
 (use-fixtures :each (fn reset-db [f]
-                      (jdbc/execute! db-spec "DROP ALL OBJECTS")
+                      (jdbc/execute! db-spec ["DROP ALL OBJECTS"])
                       (f)))
 
 (deftest test-add-migrations
@@ -27,18 +27,20 @@
                               {:migrations-table "migrations"})]
     (p/add-migration-id db "12")
     (is (= ["12"]
-           (sql/query (:db-spec db) ["SELECT * FROM migrations"] {:row-fn :id}))))
+           (map :MIGRATIONS/ID
+           (sql/query (:db-spec db) ["SELECT * FROM migrations"] {:row-fn :id})))))
 
-  (jdbc/execute! db-spec "CREATE SCHEMA myschema")
+  (jdbc/execute! db-spec ["CREATE SCHEMA myschema"])
   (let [db (next-jdbc/sql-database db-spec
                               {:migrations-table "myschema.migrations"})]
     (p/add-migration-id db "20")
     (p/add-migration-id db "21")
     (is (= ["20" "21"]
-           (sql/query (:db-spec db) ["SELECT * FROM myschema.migrations"] {:row-fn :id})))))
+           (map :MIGRATIONS/ID
+           (sql/query (:db-spec db) ["SELECT * FROM myschema.migrations"] {:row-fn :MIGRATIONS/ID}))))))
 
 (defn table-names [db]
-  (set (sql/query (:db-spec db) ["SHOW TABLES"] {:row-fn :table_name})))
+  (set (map :TABLES/TABLE_NAME (sql/query (:db-spec db) ["SHOW TABLES"] {:row-fn :table_name}))))
 
 (defn test-sql-migration [db-spec migration-extras]
   (let [db (next-jdbc/sql-database db-spec)
