@@ -68,7 +68,7 @@
   (test-sql-migration db-spec { :transactions true }))
 
 (deftest test-sql-migration-using-db-spec-with-existing-connection
-  (jdbc/with-db-connection
+  (sql/with-db-connection
     [conn db-spec]
     (test-sql-migration conn {})))
 
